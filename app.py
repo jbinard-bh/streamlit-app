@@ -1084,3 +1084,281 @@ if temp_path and os.path.exists(temp_path):
 else:
 
     st.info("Upload your Excel file above to begin")
+
+
+
+
+
+
+
+
+# --------- distros email-bookrunners
+
+from collections import defaultdict
+
+BANK_ALIASES = {
+    "db": "deutsche",
+    "deutsche": "deutsche",
+    "socgen": "socgen",
+    "sg": "socgen",
+    "ubs": "ubs",
+    "cacib": "cacib",
+    "citi": "citi",
+    "bofa": "bofa",
+    "barclays": "barclays",
+    "gs": "gs",
+    "ing": "ing",
+    "jpm": "jpm",
+    "jpmorgan": "jpm",
+    "mufg": "mufg",
+    "rbc": "rbc",
+    "smbc": "smbc",
+    "daiwa": "daiwa",
+    "natwest": "natwest",
+    "dz": "dz bank",
+    "dzbank": "dz bank",
+}
+
+
+def load_distro_grouped(path):
+
+    bank_map = defaultdict(lambda: defaultdict(list))
+
+    wb = load_workbook(path, data_only=True)
+
+    if "distros" not in wb.sheetnames:
+        return {}
+
+    ws = wb["distros"]
+
+    # --- FIX MERGED CELLS ---
+    for merged in list(ws.merged_cells.ranges):
+
+        min_row, min_col, max_row, max_col = merged.bounds
+        value = ws.cell(min_row, min_col).value
+
+        ws.unmerge_cells(str(merged))
+
+        for r in range(min_row, max_row + 1):
+            for c in range(min_col, max_col + 1):
+                ws.cell(r, c).value = value
+    # ------------------------
+
+    current_bank = None  # <-- forward-fill tracker
+
+    for row in ws.iter_rows(min_row=2, values_only=True):
+
+        bank = row[0]
+        email = row[1]
+        group = row[3]  # EM/DM grouping column
+
+        # --- Forward fill bank names (handles merged cells) ---
+        if bank and str(bank).strip():
+            bank_clean = str(bank).strip().lower()
+            current_bank = BANK_ALIASES.get(bank_clean, bank_clean)
+
+        bank_key = current_bank
+        # ------------------------------------------------------
+
+        if not bank_key or not email:
+            continue
+
+        group_name = str(group).strip() if group else "Other"
+
+        bank_map[bank_key][group_name].append(str(email).strip())
+
+    return bank_map
+
+
+def build_distro_output(df, bank_map, selected_rows):
+
+    cols_lower = {c.lower().strip(): c for c in df.columns}
+
+    book_col = cols_lower.get("bookrunners")
+    bd_col = cols_lower.get("billanddelivery")
+
+    if not book_col or not bd_col:
+        return {}, [], []
+
+    banks = set()
+
+    for v in selected_rows[book_col].dropna():
+        for b in str(v).split(","):
+
+            b = b.strip().lower()
+            if not b:
+                continue
+
+            b = BANK_ALIASES.get(b, b)
+            banks.add(b)
+
+    bd_raw = str(selected_rows.iloc[0][bd_col]).strip().lower()
+    bd_bank = BANK_ALIASES.get(bd_raw, bd_raw)
+
+    ordered_banks = []
+
+    if bd_bank:
+        ordered_banks.append(bd_bank)
+
+    for b in sorted(banks):
+        if b != bd_bank:
+            ordered_banks.append(b)
+
+    structured = {}
+    missing = []
+
+    for bank in ordered_banks:
+
+        if bank not in bank_map:
+
+            if bank == bd_bank:
+                missing.append(f"{bank} (B&D)")
+            else:
+                missing.append(bank)
+
+            continue
+
+        structured[bank] = bank_map[bank]
+
+    return structured, ordered_banks, missing, #bd_raw
+
+
+
+# ── UI ──────────────────────────────────────────────────────────────────────
+
+if temp_path and os.path.exists(temp_path):
+
+    st.divider()
+    st.subheader("Bookrunner Syndicate Distribution")
+
+    # Initialize session storage
+    if "distro_structured" not in st.session_state:
+        st.session_state.distro_structured = None
+        st.session_state.distro_order = None
+        st.session_state.distro_missing = None
+
+    if st.button("📬 Generate Syndicate Distribution Emails"):
+
+        distro_map = load_distro_grouped(temp_path)
+
+        selected_rows = edited[edited["_select"] == True]
+
+        if selected_rows.empty:
+            st.warning("Please select at least one issuer row.")
+
+        else:
+            structured, ordered_banks, missing = build_distro_output(
+                st.session_state.df, distro_map, selected_rows
+            )
+            # structured, ordered_banks, missing, bd_raw = build_distro_output(
+            #     st.session_state.df, distro_map, selected_rows
+            # )
+
+            st.session_state.distro_structured = structured
+            st.session_state.distro_order = ordered_banks
+            st.session_state.distro_missing = missing
+
+    structured = st.session_state.distro_structured
+    ordered_banks = st.session_state.distro_order
+    missing = st.session_state.distro_missing
+
+    if structured:
+
+        if missing:
+            st.warning("Missing distros for: " + ", ".join(missing))
+
+        selected_emails = set()
+
+        st.subheader("Select Email Groups")
+
+        selected_emails = set()
+
+        for bank in ordered_banks:
+
+            if bank not in structured:
+                continue
+
+            #----------------------
+            st.markdown(f"### {bank.upper()}")
+            # title = bank.upper()
+
+            # if bank == bd_raw:
+            #     title = f"{title} (B&D)"
+
+            # st.markdown(f"### {title}")
+            #----------------------
+
+
+            groups = structured[bank]
+
+            bank_select_key = f"select_all_{bank}"
+
+            # Track previous state
+            prev_state_key = f"{bank_select_key}_prev"
+
+            if prev_state_key not in st.session_state:
+                st.session_state[prev_state_key] = False
+
+            select_all_bank = st.checkbox(
+                f"Select all {bank} groups",
+                key=bank_select_key
+            )
+
+            # Toggle ON → select all groups
+            if select_all_bank and not st.session_state[prev_state_key]:
+                for grp in groups:
+                    st.session_state[f"{bank}_{grp}"] = True
+
+            # Toggle OFF → deselect all groups
+            if not select_all_bank and st.session_state[prev_state_key]:
+                for grp in groups:
+                    st.session_state[f"{bank}_{grp}"] = False
+
+            st.session_state[prev_state_key] = select_all_bank
+
+            for grp, emails in groups.items():
+
+                checkbox_key = f"{bank}_{grp}"
+
+                checked = st.checkbox(
+                    grp,
+                    key=checkbox_key
+                )
+
+                if checked:
+                    selected_emails.update(emails)
+
+                with st.expander("Show emails", expanded=False):
+                    st.write("\n".join(emails))
+
+
+        import streamlit.components.v1 as components
+
+        if selected_emails:
+
+            copy_string = "; ".join(sorted(selected_emails))
+
+            st.text_area(
+                "Emails to Copy",
+                value=copy_string,
+                height=120,
+            )
+
+            copy_html = f"""
+            <button onclick="navigator.clipboard.writeText(`{copy_string}`)" 
+            style="
+                background-color:#4CAF50;
+                border:none;
+                color:white;
+                padding:10px 16px;
+                text-align:center;
+                font-size:14px;
+                border-radius:6px;
+                cursor:pointer;">
+                📋 Copy Emails
+            </button>
+            """
+
+            components.html(copy_html, height=50)
+
+            st.caption("Click the button to copy emails directly to clipboard")
