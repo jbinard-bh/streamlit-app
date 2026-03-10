@@ -595,6 +595,33 @@ from tempfile import NamedTemporaryFile
 from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 
+PASSWORD = "MDJ2026!"
+
+def login():
+    st.title("Login Required")
+
+    with st.form("login_form"):
+        password = st.text_input("Enter password", type="password")
+        submitted = st.form_submit_button("Enter")
+
+        if submitted:
+            if password == PASSWORD:
+                st.session_state["authenticated"] = True
+                st.rerun()
+            else:
+                st.error("Incorrect password")
+
+# initialize login state
+if "authenticated" not in st.session_state:
+    st.session_state["authenticated"] = False
+
+# stop app if not logged in
+if not st.session_state["authenticated"]:
+    login()
+    st.stop()
+
+
+
 st.set_page_config(layout="wide", page_title="Deal Table")
 st.title("Deal Table")
 
@@ -1055,4 +1082,5 @@ if temp_path and os.path.exists(temp_path):
                         st.text_area("", value=email, height=400, key="email_out")
                         st.caption("Select all (Ctrl+A / Cmd+A) then copy.")
 else:
+
     st.info("Upload your Excel file above to begin")
