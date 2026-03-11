@@ -859,6 +859,46 @@ if temp_path and os.path.exists(temp_path):
         key="tbl",
     )
 
+    st.markdown("### Row Order")
+
+    c_up, c_down = st.columns(2)
+
+    selected_rows = edited.index[edited["_select"] == True].tolist()
+
+    with c_up:
+        if st.button("⬆ Move Selected Rows Up"):
+            if selected_rows:
+
+                df = edited.copy()
+
+                top = df.iloc[:selected_rows[0]-1]
+                block = df.iloc[selected_rows]
+                swap = df.iloc[selected_rows[0]-1:selected_rows[0]]
+                bottom = df.drop(df.index[:selected_rows[0]+len(selected_rows)])
+
+                new_df = pd.concat([top, block, swap, bottom]).reset_index(drop=True)
+
+                st.session_state.df = new_df
+                st.rerun()
+
+    with c_down:
+        if st.button("⬇ Move Selected Rows Down"):
+            if selected_rows:
+
+                df = edited.copy()
+
+                last = selected_rows[-1]
+
+                top = df.iloc[:selected_rows[0]]
+                block = df.iloc[selected_rows]
+                swap = df.iloc[last+1:last+2]
+                bottom = df.iloc[last+2:]
+
+                new_df = pd.concat([top, swap, block, bottom]).reset_index(drop=True)
+
+                st.session_state.df = new_df
+                st.rerun()
+
     # ── Recompute: merge edited input cols back into full df, then recompute ────
     # edited only has visible columns (calc cols are hidden); we need the full df
     # so recompute can read all input columns (Sold, Margin, etc.)
@@ -1365,4 +1405,5 @@ if temp_path and os.path.exists(temp_path):
             components.html(copy_html, height=50)
 
             st.caption("Click the button to copy emails directly to clipboard")
+
 
