@@ -1036,6 +1036,8 @@ if temp_path and os.path.exists(temp_path):
                     st.error("Cannot find Order column.")
                 else:
                     issuer = str(selected.iloc[0][issuer_col]).strip()
+                    bd_col = cols_lower.get("billanddelivery")
+                    bd_bank = str(selected.iloc[0][bd_col]).strip() if bd_col else ""
                     issuer_rows = edited[edited[issuer_col].astype(str).str.strip() == issuer]
 
                     tranche_pcts = []
@@ -1067,6 +1069,7 @@ if temp_path and os.path.exists(temp_path):
                         email = (
                             f"BREVAN HOWARD GUPS ABU DHABI\n\n"
                             f"Dear Team {issuer},\n\n"
+                            f"{bd_bank} kindly shared your details\n\n"
                             f"Great to see a new deal go live today!\n\n"
                             f"FYI we have let the lead banks know we are targeting an allocation "
                             f"of the new deal at {pct_str} of deal size - good into final price "
@@ -1362,3 +1365,4 @@ if temp_path and os.path.exists(temp_path):
             components.html(copy_html, height=50)
 
             st.caption("Click the button to copy emails directly to clipboard")
+
