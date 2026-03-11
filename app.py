@@ -999,7 +999,7 @@ if temp_path and os.path.exists(temp_path):
 
     # ── ORDER MESSAGE ─────────────────────────────────────────────────────────
     with c2:
-        if st.button("📨 Generate Message for Selected Issuer"):
+        if st.button("📨 Generate BBG Message for Selected Issuer"):
             selected = edited[edited["_select"] == True]
 
             if selected.empty:
@@ -1059,7 +1059,7 @@ if temp_path and os.path.exists(temp_path):
                         st.caption("Select all (Ctrl+A / Cmd+A) then copy.")
     # ── INVESTOR EMAIL ────────────────────────────────────────────────────────
     with c3:
-        if st.button("📧 Generate Investor Email"):
+        if st.button("📧 Generate Mgmt Email"):
             selected = edited[edited["_select"] == True]
 
             if selected.empty:
@@ -1405,5 +1405,6 @@ if temp_path and os.path.exists(temp_path):
             components.html(copy_html, height=50)
 
             st.caption("Click the button to copy emails directly to clipboard")
+
 
 
