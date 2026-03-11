@@ -1116,7 +1116,6 @@ if temp_path and os.path.exists(temp_path):
                             f"By way of brief introduction, our team based in Abu Dhabi manages a multi billion longer term hold global EM credit mandate. We have been highly supportive of new issuance in the region and now expanding selectively in DM EUR/USD for more favored issuers\n\n"
                             f"We hope to further grow our partnership with you across currencies and tenors\n\n"
                             f"Whilst the current situation in Abu Dhabi is not ideal we remain very open for business and hope we can host you at our offices if you plan a trip in the future\n\n"
-                            f"to host you at our offices\n\n"
                             f"Best wishes,\n\n"
                             f"~David and Mitesh"
                         )
@@ -1405,6 +1404,7 @@ if temp_path and os.path.exists(temp_path):
             components.html(copy_html, height=50)
 
             st.caption("Click the button to copy emails directly to clipboard")
+
 
 
 
